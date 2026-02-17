@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>News Analysis Result - Fake News Detector</title><meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>News Analysis Result - Fake News Detector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* CSS Styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: url("{{ url_for('static', filename='image/predict(1).jpg') }}") no-repeat center center fixed;
+      background-size: cover;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .overlay {
+      background: rgba(0, 0, 0, 0.7);
+      width: 100%;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1000px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .header h1 {
+      color: #2c3e50;
+      font-size: 2.5em;
+      margin-bottom: 10px;
+    }
+
+    .header p {
+      color: #7f8c8d;
+      font-size: 1.1em;
+    }
+
+    .result-badge {
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 28px;
+      font-weight: bold;
+      margin: 20px 0;
+      border: 3px solid;
+      transition: all 0.3s ease;
+    }
+
+    .real {
+      background: linear-gradient(135deg, #d4edda, #c3e6cb);
+      color: #155724;
+      border-color: #28a745;
+    }
+
+    .fake {
+      background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+      color: #721c24;
+      border-color: #dc3545;
+    }
+
+    .likely_real {
+      background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+      color: #856404;
+      border-color: #ffc107;
+    }
+
+    .likely_fake {
+      background: linear-gradient(135deg, #ffeaa7, #ffd8a8);
+      color: #856404;
+      border-color: #fd7e14;
+    }
+
+    .unknown {
+      background: linear-gradient(135deg, #e9ecef, #dee2e6);
+      color: #495057;
+      border-color: #6c757d;
+    }
+
+    .confidence-section {
+      margin: 30px 0;
+      text-align: center;
+    }
+
+    .confidence-meter {
+      width: 100%;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 20px;
+      margin: 20px 0;
+      overflow: hidden;
+      box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .confidence-fill {
+      height: 100%;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding-right: 20px;
+      color: white;
+      font-weight: bold;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+      width: 0%;
+      transition: width 1s ease-in-out;
+    }
+
+    .high {
+      background: linear-gradient(90deg, #28a745, #20c997);
+    }
+
+    .medium {
+      background: linear-gradient(90deg, #ffc107, #fd7e14);
+    }
+
+    .low {
+      background: linear-gradient(90deg, #dc3545, #e83e8c);
+    }
+
+    .confidence-text {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #2c3e50;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin: 30px 0;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px 20px;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      text-align: center;
+    }
+
+    .btn-google {
+      background: linear-gradient(135deg, #4285f4, #34a853);
+      color: white;
+      box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
+    }
+
+    .btn-news {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: white;
+      box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+    }
+
+    .btn-timesnow {
+      background: linear-gradient(135deg, #ff9ff3, #f368e0);
+      color: white;
+      box-shadow: 0 4px 15px rgba(255, 159, 243, 0.3);
+    }
+
+    .btn-lokmat {
+      background: linear-gradient(135deg, #00d2d3, #54a0ff);
+      color: white;
+      box-shadow: 0 4px 15px rgba(0, 210, 211, 0.3);
+    }
+
+    .btn-nytimes {
+      background: linear-gradient(135deg, #2e86de, #4834d4);
+      color: white;
+      box-shadow: 0 4px 15px rgba(46, 134, 222, 0.3);
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .analysis-section {
+      background: rgba(248, 249, 250, 0.8);
+      padding: 25px;
+      border-radius: 12px;
+      margin: 20px 0;
+      border-left: 5px solid #007bff;
+    }
+
+    .section-title {
+      color: #2c3e50;
+      margin-bottom: 20px;
+      font-size: 1.5em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .input-text {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      border: 2px solid #e9ecef;
+      margin: 15px 0;
+      font-size: 16px;
+      line-height: 1.6;
+      max-height: 200px;
+      overflow-y: auto;
+      color: #2c3e50;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 15px;
+      margin: 15px 0;
+    }
+
+    .stat-item {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s ease;
+    }
+
+    .stat-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #007bff;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #6c757d;
+      text-transform: uppercase;
+    }
+
+    .fact-check-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin: 20px 0;
+    }
+
+    .fact-check-item {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid #007bff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s ease;
+    }
+
+    .fact-check-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .fact-check-link {
+      color: #007bff;
+      text-decoration: none;
+      font-weight: bold;
+      display: block;
+    }
+
+    .fact-check-link:hover {
+      text-decoration: underline;
+    }
+
+    .domain-type {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: 12px;
+      display: inline-block;
+    }
+
+    .domain-type-trusted {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .domain-type-suspicious {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .domain-type-unknown {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .tips-list {
+      line-height: 1.8;
+      padding-left: 20px;
+    }
+
+    .tips-list li {
+      margin-bottom: 10px;
+      color: #2c3e50;
+    }
+
+    .news-source-buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 20px;
+        margin: 10px;
+      }
+
+      .header h1 {
+        font-size: 2em;
+      }
+
+      .result-badge {
+        font-size: 22px;
+        padding: 20px;
+      }
+
+      .action-buttons {
+        grid-template-columns: 1fr;
+      }
+
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn 1s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="overlay">
+    <div class="container fade-in">
+      <!-- Header Section -->
+      <div class="header">
+        <h1>🔍 News Analysis Result</h1>
+        <p>Comprehensive fact-checking and verification report</p>
+      </div>
+
+      <!-- Result Badge -->
+      <div class="result-badge {{ result }} pulse">
+        {% if result == 'real' %}✅ REAL NEWS - FACTUAL CONTENT{% endif %}
+        {% if result == 'fake' %}❌ FAKE NEWS - POTENTIAL MISINFORMATION{% endif %}
+        {% if result == 'likely_real' %}⚠️ LIKELY REAL - VERIFY WITH SOURCES{% endif %}
+        {% if result == 'likely_fake' %}⚠️ LIKELY FAKE - EXERCISE CAUTION{% endif %}
+        {% if result == 'unknown' %}❓ INCONCLUSIVE - NEEDS FURTHER VERIFICATION{% endif %}
+      </div>
+
+      <!-- Confidence Section -->
+      <div class="confidence-section">
+        <div class="confidence-text">Confidence Level: {{ confidence }}</div>
+        <div class="confidence-meter">
+          <div class="confidence-fill {{ confidence_level }}" id="confidenceFill">
+            {{ confidence }}
+          </div>
+        </div>
+      </div>
+
+      <!-- News Source Verification Buttons -->
+      <div class="analysis-section">
+        <h3 class="section-title">🌐 Verify with Trusted News Sources</h3>
+        <div class="news-source-buttons">
+          <a href="{{ google_search_url }}" target="_blank" class="btn btn-google">
+            <span>🔍</span> Google News
+          </a>
+          <a href="https://timesofindia.indiatimes.com/" target="_blank" class="btn btn-news">
+            <span>📰</span> Times of India
+          </a>
+          <a href="https://www.timesnownews.com/" target="_blank" class="btn btn-timesnow">
+            <span>📺</span> Times Now
+          </a>
+          <a href="https://www.lokmat.com/" target="_blank" class="btn btn-lokmat">
+            <span>🗞️</span> Lokmat
+          </a>
+          <a href="https://www.nytimes.com/" target="_blank" class="btn btn-nytimes">
+            <span>🌎</span> New York Times
+          </a>
+        </div>
+      </div>
+
+      <!-- Input Text Section -->
+      <div class="analysis-section">
+        <h3 class="section-title">📝 Analyzed News Content</h3>
+        <div class="input-text">{{ news }}</div>
+      </div>
+
+      <!-- Domain Analysis -->
+      {% if verification_details and verification_details.domain_analysis %}
+      <div class="analysis-section">
+        <h3 class="section-title">🌐 Domain Analysis</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">{{ verification_details.domain_analysis.credibility_score }}/100</div>
+            <div class="stat-label">Credibility Score</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value" style="font-size: 16px;">{{ verification_details.domain_analysis.domain }}</div>
+            <div class="stat-label">Domain</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Trust Level</div>
+            <span class="domain-type domain-type-{{ verification_details.domain_analysis.domain_type }}">
+              {{ verification_details.domain_analysis.domain_type|upper }}
+            </span>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Text Analysis -->
+      {% if verification_details and verification_details.text_analysis and
+      verification_details.text_analysis.word_count > 0 %}
+      <div class="analysis-section">
+        <h3 class="section-title">📊 Text Analysis</h3>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-value">{{ verification_details.text_analysis.word_count }}</div>
+            <div class="stat-label">Word Count</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ verification_details.text_analysis.sensational_words }}</div>
+            <div class="stat-label">Sensational Words</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ verification_details.text_analysis.exclamation_count }}</div>
+            <div class="stat-label">Exclamation Marks</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-value">{{ verification_details.text_analysis.caps_ratio }}%</div>
+            <div class="stat-label">Capital Letters</div>
+          </div>
+        </div>
+        <div style="text-align: center; margin-top: 15px;">
+          <div class="stat-label">SUSPICION SCORE</div>
+          <div class="stat-value"
+            style="color: {% if verification_details.text_analysis.suspicion_score >= 6 %}#dc3545{% elif verification_details.text_analysis.suspicion_score >= 3 %}#ffc107{% else %}#28a745{% endif %};">
+            {{ verification_details.text_analysis.suspicion_score }}/10
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Fact Checking Resources -->
+      {% if verification_details and verification_details.fact_check_urls %}
+      <div class="analysis-section">
+        <h3 class="section-title">✅ Additional Fact-Checking Resources</h3>
+        <div class="fact-check-grid">
+          {% for site, url in verification_details.fact_check_urls.items() %}
+          <div class="fact-check-item">
+            <a href="{{ url }}" target="_blank" class="fact-check-link">
+              🔍 Check on {{ site.replace('_', ' ').title() }}
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Tips Section -->
+      <div class="analysis-section">
+        <h3 class="section-title">💡 How to Verify News Yourself</h3>
+        <ul class="tips-list">
+          <li><strong>Check multiple sources:</strong> Compare the news with other reputable websites</li>
+          <li><strong>Look for author information:</strong> Credible news usually has named authors</li>
+          <li><strong>Check the date:</strong> Old news might be recirculated as current</li>
+          <li><strong>Verify images:</strong> Use reverse image search to check image authenticity</li>
+          <li><strong>Read beyond headlines:</strong> Clickbait headlines often misrepresent content</li>
+          <li><strong>Check domain credibility:</strong> Trust established news organizations</li>
+          <li><strong>Look for evidence:</strong> Credible news provides sources and evidence</li>
+        </ul>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <a href="{{ google_search_url }}" target="_blank" class="btn btn-google">
+          <span>🔍</span> Verify on Google News
+        </a>
+        <a href="/" class="btn btn-secondary">
+          <span>🔄</span> Check Another News
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // Add animation to confidence meter
+    document.addEventListener('DOMContentLoaded', function () {
+      const confidenceFill = document.getElementById('confidenceFill');
+      const confidenceValue = parseFloat('{{ confidence.split("%")[0] }}') || 0;
+
+      // Animate the confidence meter
+      setTimeout(() => {
+        confidenceFill.style.width = confidenceValue + '%';
+      }, 500);
+
+      // Add analytics for button clicks
+      const buttons = document.querySelectorAll('.btn');
+      buttons.forEach(button => {
+        button.addEventListener('click', function () {
+          const buttonText = this.textContent.trim();
+          console.log(`User clicked: ${buttonText}`);
+
+          // You can add Google Analytics here
+          // gtag('event', 'button_click', {
+          //     'event_category': 'engagement',
+          //     'event_label': buttonText
+          // });
+        });
+      });
+
+      // Add hover effects to stat items
+      const statItems = document.querySelectorAll('.stat-item');
+      statItems.forEach(item => {
+        item.addEventListener('mouseenter', function () {
+          this.style.transform = 'translateY(-5px)';
+        });
+        item.addEventListener('mouseleave', function () {
+          this.style.transform = 'translateY(0)';
+        });
+      });
+
+      // Add loading state for buttons
+      const newsButtons = document.querySelectorAll('.btn[target="_blank"]');
+      newsButtons.forEach(button => {
+        button.addEventListener('click', function (e) {
+          const originalText = this.innerHTML;
+          this.innerHTML = '<span>⏳</span> Loading...';
+
+          setTimeout(() => {
+            this.innerHTML = originalText;
+          }, 2000);
+        });
+      });
+    });
+
+    // Add keyboard navigation
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        window.location.href = '/';
+      }
+    });
+
+    // Add print functionality
+    function printReport() {
+      window.print();
+    }
+
+    // Share functionality
+    function shareResult() {
+      if (navigator.share) {
+        navigator.share({
+          title: 'News Verification Result',
+          text: 'Check this news verification result',
+          url: window.location.href
+        });
+      } else {
+        // Fallback
+        alert('Share this URL: ' + window.location.href);
+      }
+    }
+  </script>
+</body>
+
+</html>
